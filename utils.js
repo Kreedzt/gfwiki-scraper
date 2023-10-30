@@ -40,21 +40,14 @@ const captureSkinList = async (page, url) => {
   await page.goto(url);
 
   const skinList = await page.evaluate(() => {
-    // const elements = Array.from(document.querySelectorAll('div.dollSkinBtn'));
     const elements = Array.from(document.querySelectorAll('select.gf-droplist option'));
 
-    // const dataList = elements.map(el => {
-    //   return {
-    //     index: el.attributes.getNamedItem('index').value,
-    //     innerText: el.innerText
-    //   };
-    // });
-
     const dataList = elements.map((v, index) => {
+      const displayValue = v.value === '{{BASEPAGENAME}}' ? '0' : v.value;
       return {
         index,
         title: v.innerText,
-        value: v.value
+        value: displayValue
       };
     });
 
