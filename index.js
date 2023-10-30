@@ -30,7 +30,12 @@ const runCaptureSkinTask = async (dollsData) => {
     return new Promise(res => {
       const start = perThreadTask * index;
       const end = perThreadTask * (index + 1);
-      const threadTaskData = allTask.slice(perThreadTask * index, perThreadTask * (index + 1));
+      const threadTaskData = allTask.slice(start, end);
+
+      if (threadTaskData.length === 0) {
+        res({});
+        return;
+      }
 
       const workerIns = new Worker(path.join(__dirname, 'worker.js'), {
         workerData: {
@@ -76,5 +81,10 @@ const runCaptureSkinTask = async (dollsData) => {
 
   // await captureSkinList(browser, 'http://www.gfwiki.org/w/M4A1#MOD3');
 
-  await runCaptureSkinTask(tdollList);
+  const nextData = tdollList;
+
+  if (nextData.length === 0) {
+    return;
+  }
+  await runCaptureSkinTask(nextData);
 })();
