@@ -17,10 +17,9 @@ const threads = os.cpus().length;
 
 
 /**
- * @param browser {puppeteer.Browser}
  * @param dollsData {Array<TDollItem>}
  */
-const runCaptureSkinTask = async (browser, dollsData) => {
+const runCaptureSkinTask = async (dollsData) => {
   const allTask = [...dollsData];
 
   const taskLength = allTask.length;
@@ -71,11 +70,11 @@ const runCaptureSkinTask = async (browser, dollsData) => {
   });
 
   const tdollList = await captureTDollList(browser);
+  await browser.close();
+
   // await captureSkin(browser, 'http://www.gfwiki.org' + dollsData[0].url);
 
   // await captureSkinList(browser, 'http://www.gfwiki.org/w/M4A1#MOD3');
 
-  await runCaptureSkinTask(browser, tdollList);
-
-  await browser.close();
+  await runCaptureSkinTask(tdollList);
 })();

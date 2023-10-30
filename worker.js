@@ -13,18 +13,25 @@ const start = async () => {
   const browser = await puppeteer.launch({
     headless: "new"
   });
-  const page = await browser.newPage();
-  await page.setDefaultNavigationTimeout(60 * 1000);
 
-  while (taskData.length > 0) {
-    const handleItem = taskData.pop();
-    const handleIndex = taskData.length;
-    console.log(`Thread: ${threadId} handling: ${handleIndex} / ${taskRawData.length}`);
+  try {
+    const page = await browser.newPage();
+    await page.setDefaultNavigationTimeout(60 * 1000);
 
-    const skinList = await captureSkinList(page, `http://www.gfwiki.org${handleItem.url}`);
-    allSkinsRecord[handleItem.id] = skinList;
+    while (taskData.length > 0) {
+      const handleItem = taskData.pop();
+      const handleIndex = taskData.length;
+      console.log(`Thread: ${threadId} handling: ${handleIndex} / ${taskRawData.length}`);
+
+      const skinList = await captureSkinList(page, `http://www.gfwiki.org${handleItem.url}`);
+      allSkinsRecord[handleItem.id] = skinList;
+    }
+    console.log("Thread: ", threadId, " completed");
+
+    await page.close();
+  } catch(e) {
+    console.log(`Thread ${threadId} error:`, e);
   }
-  console.log("Thread: ", threadId, " completed");
 
   await browser.close();
 
