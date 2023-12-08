@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const { Worker } = require('worker_threads');
 const { captureSkinList, captureTDollList, writeSkinList2File } = require('./utils');
-const { registerExit, registerProcessExit, exitAllTask } = require('./exit');
+const { registerTaskExit, registerProcessExit, exitAllTask } = require('./exit');
 
 const threads = os.cpus().length;
 
@@ -96,7 +96,7 @@ const runCaptureSkinTask = async (dollsData) => {
         }
       });
 
-      registerExit(workerIns);
+      registerTaskExit(workerIns);
     });
   });
 
