@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const { Worker } = require('worker_threads');
 const { captureSkinList, captureTDollList, writeSkinList2File } = require('./utils');
-const { registerExit, registerProcessExit } = require('./exit');
+const { registerExit, registerProcessExit, exitAllTask } = require('./exit');
 
 const threads = os.cpus().length;
 
@@ -29,18 +29,16 @@ const runCaptureSkinTask = async (dollsData) => {
   const allTask = [...dollsData];
 
   const taskLength = allTask.length;
-  const perThreadTask = taskLength / threads;
   console.log("CaptureSkinTask started, total:", taskLength);
 
   const workerInsArr = [];
 
+  let allSkinsRecord = {};
+  let errorTimesRecord = {};
+
   const threadsArr = new Array(threads).fill(0).map((_a, index) => {
     return new Promise(res => {
-      const start = perThreadTask * index;
-      const end = perThreadTask * (index + 1);
-      const threadTaskData = allTask.slice(start, end);
-
-      if (threadTaskData.length === 0) {
+      if (allTask.length === 0) {
         res({});
         return;
       }
@@ -48,29 +46,65 @@ const runCaptureSkinTask = async (dollsData) => {
       const workerIns = new Worker(path.join(__dirname, 'worker.js'), {
         workerData: {
           threadId: index,
-          taskData: threadTaskData
+          taskData: allTask.shift()
+        }
+      });
+
+      workerIns.on('message', _msg => {
+        /**
+         * @type {String}
+         */
+        const msg = _msg;
+        console.log(`Worker ${index} message received:`, msg);
+
+        console.log(`CaptureSkinTask amount:`, allTask.length);
+        if (typeof msg === 'string' && msg.startsWith('{') && msg.endsWith('}')) {
+          const jsonMsg = JSON.parse(msg);
+
+          switch (jsonMsg.type) {
+            case 'capture_completed': {
+              allSkinsRecord = {
+                ...allSkinsRecord,
+                ...jsonMsg.data
+              };
+            }
+            case 'capture_error': {
+              if (!(jsonMsg.data.id in errorTimesRecord)) {
+                errorTimesRecord[jsonMsg.data.id] = 0;
+              }
+
+              // max retry times: 3
+              if (errorTimesRecord[jsonMsg.data.id] !== 3) {
+                // +1 times
+                errorTimesRecord[jsonMsg.data.id] += 1;
+                // add task to last
+                allTask.push(jsonMsg.data);
+              }
+            }
+            default: {
+              if (allTask.length === 0) {
+                res();
+                return;
+              }
+              workerIns.postMessage(JSON.stringify({
+                type: 'newData',
+                taskData: allTask.shift()
+              }));
+              break;
+            }
+          }
         }
       });
 
       registerExit(workerIns);
-
-      workerIns.on('message', msg => {
-        console.log(`Worker ${index} message received`);
-
-        res(msg);
-      });
     });
   });
 
   const resList = await Promise.all(threadsArr);
 
-  const allSkinsRecord = resList.reduce((acc, cur) => {
-    Object.assign(acc, cur);
+  exitAllTask();
 
-    return acc;
-  }, {});
-
-  console.log(`CaptureSkinTask completed, total: ${Object.keys(allSkinsRecord).length}`);
+  console.log(`Main: CaptureSkinTask completed, total: ${Object.keys(allSkinsRecord).length}`);
 
   // write to file
   writeSkinList2File(allSkinsRecord);
@@ -101,7 +135,7 @@ const runCaptureSkinTask = async (dollsData) => {
   if (nextData.length === 0) {
     return;
   }
-  await runCaptureSkinTask(nextData.slice(0, 16));
+  await runCaptureSkinTask(nextData);
 })();
 
 registerProcessExit();

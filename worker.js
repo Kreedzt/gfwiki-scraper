@@ -2,49 +2,58 @@ const { parentPort, workerData } = require('worker_threads');
 const puppeteer = require('puppeteer');
 const { captureSkinList } = require('./utils');
 
-const { taskData: taskRawData, threadId } = workerData;
+const { taskData, threadId } = workerData;
 
-const taskData = [...taskRawData];
-
-const allSkinsRecord = {};
 
 let terminating = false;
+let browser = null;
+let page = null;
+
+const capture = async (data) => {
+  console.log(`Thread: ${threadId} capturing: http://www.gfwiki.org${data.url}`);
+
+  try {
+    const skinList = await captureSkinList(page, `http://www.gfwiki.org${data.url}`);
+
+    parentPort.postMessage(JSON.stringify({
+      type: 'capture_completed',
+      data: {
+        [data.id]: skinList
+      }
+    }));
+  } catch (e) {
+    console.log(`Thread: ${threadId} capture error`, e);
+    parentPort.postMessage(JSON.stringify({
+      type: 'capture_error',
+      data: data
+    }));
+  }
+}
 
 const start = async () => {
+  if (terminating) {
+    return;
+  }
+
   // set page ready
-  const browser = await puppeteer.launch({
+  browser = await puppeteer.launch({
     headless: "new"
   });
 
   try {
-    const page = await browser.newPage();
+    page = await browser.newPage();
     await page.setDefaultNavigationTimeout(60 * 1000);
 
     if (terminating) {
       return;
     }
 
-    while (taskData.length > 0) {
-      if (terminating) {
-        return;
-      }
-      const handleItem = taskData.pop();
-      const handleIndex = taskData.length;
-      console.log(`Thread: ${threadId} handling: ${handleIndex} / ${taskRawData.length}`);
-
-      const skinList = await captureSkinList(page, `http://www.gfwiki.org${handleItem.url}`);
-      allSkinsRecord[handleItem.id] = skinList;
+    if (taskData) {
+      await capture(taskData);
     }
-    console.log("Thread: ", threadId, " completed");
-
-    await page.close();
   } catch(e) {
     console.log(`Thread ${threadId} error:`, e);
   }
-
-  await browser.close();
-
-  parentPort.postMessage(allSkinsRecord);
 }
 
 start();
@@ -59,5 +68,12 @@ parentPort.on('message', async (message) => {
     }
 
     parentPort.postMessage('exited');
+    // json msg
+  } else if (typeof message === 'string' && message.startsWith('{') && message.endsWith('}')) {
+    const jsonMsg = JSON.parse(message);
+
+    if (jsonMsg.type === 'newData') {
+      await capture(jsonMsg.taskData);
+    }
   }
 });
