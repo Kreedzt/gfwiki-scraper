@@ -94,10 +94,11 @@ const captureSkinList = async (page, url) => {
     const elements = Array.from(document.querySelectorAll('select.gf-droplist option'));
 
     const dataList = elements.map((v, index) => {
+      const displayValue = v.value === '{{BASEPAGENAME}}' ? '0' : v.value;
       return {
         index,
         title: v.innerText,
-        value: v.value
+        value: displayValue
       };
     });
 
