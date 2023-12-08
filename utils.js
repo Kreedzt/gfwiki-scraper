@@ -2,6 +2,58 @@ const path = require('path');
 const fs = require('fs');
 
 /**
+ * @param data {Object}
+ */
+const writeSkinList2File = (data) => {
+  let newData = {};
+  const targetPath = path.join(__dirname, 'tdolls_skin_data.json');
+
+  if (!fs.existsSync(targetPath)) {
+    const oldData = JSON.parse(fs.readFileSync(targetPath, 'utf-8'));
+    newData = {
+      ...oldData
+    };
+  }
+
+  newData = {
+    ...newData,
+    ...data
+  };
+
+  console.log('writeSkinList2File: allData:', Object.keys(newData).length);
+
+  fs.writeFileSync(targetPath, JSON.stringify(newData, null, 4), 'utf-8');
+};
+
+exports.writeSkinList2File = writeSkinList2File;
+
+/**
+ * @param data {Array}
+ */
+const writeTdollList2File = (data) => {
+  const targetPath = path.join(__dirname, 'tdolls_data.json');
+
+  const recordMap = new Map();
+
+  if (fs.existsSync(targetPath)) {
+    const oldData = JSON.parse(fs.readFileSync(targetPath, 'utf-8'));
+
+    oldData.forEach(tdoll => {
+      recordMap.set(tdoll.id, tdoll);
+    });
+  }
+
+  data.forEach(tdoll => {
+    recordMap.set(tdoll.id, tdoll);
+  });
+
+  const newData = [...recordMap.values()].sort((a, b) => +a.id - +b.id);
+
+
+  fs.writeFileSync(targetPath, JSON.stringify(newData, null, 4), 'utf-8');
+};
+
+/**
  * @param browser {puppeteer.Browser}
   */
 const captureTDollList = async (browser) => {
@@ -17,8 +69,7 @@ const captureTDollList = async (browser) => {
     dollsData = await page.evaluate('window.DollsData');
 
     // write to file
-    const target = path.join(__dirname, 'tdolls_data.json');
-    fs.writeFileSync(target, JSON.stringify(dollsData, null, 4), 'utf-8');
+    writeTdollList2File(dollsData);
   } catch (e) {
     console.log('CaptureTdollList error', e);
   }
@@ -40,15 +91,7 @@ const captureSkinList = async (page, url) => {
   await page.goto(url);
 
   const skinList = await page.evaluate(() => {
-    // const elements = Array.from(document.querySelectorAll('div.dollSkinBtn'));
     const elements = Array.from(document.querySelectorAll('select.gf-droplist option'));
-
-    // const dataList = elements.map(el => {
-    //   return {
-    //     index: el.attributes.getNamedItem('index').value,
-    //     innerText: el.innerText
-    //   };
-    // });
 
     const dataList = elements.map((v, index) => {
       return {

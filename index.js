@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { Worker } = require('worker_threads');
-const { captureSkinList, captureTDollList } = require('./utils');
+const { captureSkinList, captureTDollList, writeSkinList2File } = require('./utils');
 
 const threads = os.cpus().length;
 
@@ -63,8 +63,7 @@ const runCaptureSkinTask = async (dollsData) => {
   console.log(`CaptureSkinTask completed, total: ${Object.keys(allSkinsRecord).length}`);
 
   // write to file
-  const target = path.join(__dirname, 'tdolls_skin_data.json');
-  fs.writeFileSync(target, JSON.stringify(allSkinsRecord, null, 4), 'utf-8');
+  writeSkinList2File(allSkinsRecord);
 
   return allSkinsRecord;
 };
