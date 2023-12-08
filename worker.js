@@ -8,6 +8,8 @@ const taskData = [...taskRawData];
 
 const allSkinsRecord = {};
 
+let terminating = false;
+
 const start = async () => {
   // set page ready
   const browser = await puppeteer.launch({
@@ -18,7 +20,14 @@ const start = async () => {
     const page = await browser.newPage();
     await page.setDefaultNavigationTimeout(60 * 1000);
 
+    if (terminating) {
+      return;
+    }
+
     while (taskData.length > 0) {
+      if (terminating) {
+        return;
+      }
       const handleItem = taskData.pop();
       const handleIndex = taskData.length;
       console.log(`Thread: ${threadId} handling: ${handleIndex} / ${taskRawData.length}`);
@@ -39,3 +48,16 @@ const start = async () => {
 }
 
 start();
+
+parentPort.on('message', async (message) => {
+  console.log(`Thread: ${threadId} got message:`, message);
+
+  if (message === 'exit') {
+    terminating = true;
+    if (browser) {
+      await browser.close();
+    }
+
+    parentPort.postMessage('exited');
+  }
+});

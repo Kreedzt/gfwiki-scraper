@@ -4,6 +4,7 @@ const path = require('path');
 const os = require('os');
 const { Worker } = require('worker_threads');
 const { captureSkinList, captureTDollList, writeSkinList2File } = require('./utils');
+const { registerExit, registerProcessExit } = require('./exit');
 
 const threads = os.cpus().length;
 
@@ -15,6 +16,11 @@ const threads = os.cpus().length;
  * @typedef {Object} TDollSkin
  */
 
+/**
+ * 线程状态记录: idle / busy / error
+ */
+const threadRecord = {};
+
 
 /**
  * @param dollsData {Array<TDollItem>}
@@ -25,6 +31,8 @@ const runCaptureSkinTask = async (dollsData) => {
   const taskLength = allTask.length;
   const perThreadTask = taskLength / threads;
   console.log("CaptureSkinTask started, total:", taskLength);
+
+  const workerInsArr = [];
 
   const threadsArr = new Array(threads).fill(0).map((_a, index) => {
     return new Promise(res => {
@@ -43,6 +51,8 @@ const runCaptureSkinTask = async (dollsData) => {
           taskData: threadTaskData
         }
       });
+
+      registerExit(workerIns);
 
       workerIns.on('message', msg => {
         console.log(`Worker ${index} message received`);
@@ -86,14 +96,12 @@ const runCaptureSkinTask = async (dollsData) => {
   const tdollList = await captureTDollList(browser);
   await browser.close();
 
-  // await captureSkin(browser, 'http://www.gfwiki.org' + dollsData[0].url);
-
-  // await captureSkinList(browser, 'http://www.gfwiki.org/w/M4A1#MOD3');
-
   const nextData = tdollList;
 
   if (nextData.length === 0) {
     return;
   }
-  await runCaptureSkinTask(nextData);
+  await runCaptureSkinTask(nextData.slice(0, 16));
 })();
+
+registerProcessExit();
