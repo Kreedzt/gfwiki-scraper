@@ -1,5 +1,6 @@
 const path = require('path');
 const fs = require('fs');
+const { timeout } = require('puppeteer');
 
 /**
  * @param data {Object}
@@ -9,10 +10,14 @@ const writeSkinList2File = (data) => {
   const targetPath = path.join(__dirname, 'tdolls_skin_data.json');
 
   if (!fs.existsSync(targetPath)) {
-    const oldData = JSON.parse(fs.readFileSync(targetPath, 'utf-8'));
-    newData = {
-      ...oldData
-    };
+    try {
+      const oldData = JSON.parse(fs.readFileSync(targetPath, 'utf-8'));
+      newData = {
+        ...oldData
+      };
+    } catch (e) {
+      console.log('writeSkinList2File: read old data error', e);
+    }
   }
 
   newData = {
@@ -59,14 +64,40 @@ const writeTdollList2File = (data) => {
 const captureTDollList = async (browser) => {
   console.log('CaptureTdollList started');
   const page = await browser.newPage();
+  await page.setRequestInterception(true);
 
   let dollsData = [];
 
   try {
-    await page.goto('http://www.gfwiki.org/w/%E6%88%98%E6%9C%AF%E4%BA%BA%E5%BD%A2%E5%9B%BE%E9%89%B4', {
-      waitUntil: 'networkidle2',
+    page.on('request', (request) => {
+      const resourceType = request.resourceType();
+      if (resourceType !== 'document') {
+        request.abort();
+      } else {
+        request.continue();
+      }
     });
-    dollsData = await page.evaluate('window.DollsData');
+
+    await page.goto('https://www.gfwiki.org/w/%E6%88%98%E6%9C%AF%E4%BA%BA%E5%BD%A2%E5%9B%BE%E9%89%B4', {
+      waitUntil: 'domcontentloaded',
+      timeout: 3000
+    });
+
+    console.log('CaptureTdollList page loaded, start evaluating...');
+
+    dollsData = await page.evaluate(() => {
+      const dollsData = Array.from(document.querySelectorAll('.dolldata')).map((dom, index) => {
+        const dataObj = {};
+
+        for (const k in dom.dataset) {
+          dataObj[k] = dom.dataset[k];
+        }
+
+        return dataObj;
+      });
+      return dollsData;
+    });
+    console.log('CaptureTdollList dollsData:', dollsData.length);
 
     // write to file
     writeTdollList2File(dollsData);
@@ -91,21 +122,47 @@ const captureSkinList = async (page, url) => {
   await page.goto(url);
 
   const skinList = await page.evaluate(() => {
+    // Get skin id list
     const elements = Array.from(document.querySelectorAll('select.gf-droplist option'));
+    // Get skin data script
+    const script = document.querySelector('#dollPicContain ~ script');
+    const scriptStart = script.innerText.indexOf('var pic_data');
+    const scriptEnd = script.innerText.indexOf('var homepic');
+
+    const skinImages = [];
+    if (scriptStart === -1 || scriptEnd === -1) {
+      // 'No skin image found'
+    } else {
+      const scriptContent = script.innerText.slice(scriptStart, scriptEnd);
+      let fnContent = scriptContent + 'return pic_data;';
+      const picData = new Function(fnContent)();
+      if (picData) {
+        picData.forEach((v) => {
+          skinImages.push({
+            anime: v.anime,
+            line: v.line,
+            name: v.name,
+            pic: v.pic,
+            pic_d: v.pic_d,
+            pic_d_h: v.pic_d_h,
+            pic_h: v.pic_h,
+          });
+        });
+      }
+    }
 
     const dataList = elements.map((v, index) => {
       const displayValue = index === 0 ? '0' : v.value;
       return {
         index,
         title: v.innerText,
-        value: displayValue
+        value: displayValue,
+        images: skinImages,
       };
     });
 
     return dataList;
   });
-
-  console.log('url:', url, 'skinList', skinList);
 
   return skinList;
 };

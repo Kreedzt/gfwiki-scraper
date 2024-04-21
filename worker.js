@@ -10,10 +10,19 @@ let browser = null;
 let page = null;
 
 const capture = async (data) => {
-  console.log(`Thread: ${threadId} capturing: http://www.gfwiki.org${data.url}`);
+  if (!data.url) {
+    console.log(`Thread: ${threadId} no url to capture`, data.id, data.url);
+    parentPort.postMessage(JSON.stringify({
+      type: 'capture_completed',
+      data: {}
+    }));
+    return;
+  }
+
+  console.log(`Thread: ${threadId} capturing: https://www.gfwiki.org${data.url}`);
 
   try {
-    const skinList = await captureSkinList(page, `http://www.gfwiki.org${data.url}`);
+    const skinList = await captureSkinList(page, `https://www.gfwiki.org${data.url}`);
 
     parentPort.postMessage(JSON.stringify({
       type: 'capture_completed',
@@ -42,12 +51,21 @@ const start = async () => {
 
   try {
     page = await browser.newPage();
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (req.resourceType() === 'document') {
+        req.continue();
+      } else {
+        req.abort();
+      }
+    });
     await page.setDefaultNavigationTimeout(60 * 1000);
 
     if (terminating) {
       return;
     }
 
+    console.log(`Thread: ${threadId} start with taskData:`, taskData.id, taskData.url);
     if (taskData) {
       await capture(taskData);
     }

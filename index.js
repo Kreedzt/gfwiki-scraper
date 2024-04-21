@@ -36,7 +36,7 @@ const runCaptureSkinTask = async (dollsData) => {
   let allSkinsRecord = {};
   let errorTimesRecord = {};
 
-  const threadsArr = new Array(threads).fill(0).map((_a, index) => {
+  const threadsArr = new Array(Math.min(threads, taskLength)).fill(0).map((_a, index) => {
     return new Promise(res => {
       if (allTask.length === 0) {
         res({});
@@ -114,7 +114,7 @@ const runCaptureSkinTask = async (dollsData) => {
 
 (async () => {
   const browser = await puppeteer.launch({
-    headless: "new",
+    headless: 'new',
     args: [
       '--no-sandbox',
       '--disable-setuid-sandbox',
