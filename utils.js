@@ -126,28 +126,31 @@ const captureSkinList = async (page, url) => {
     const elements = Array.from(document.querySelectorAll('select.gf-droplist option'));
     // Get skin data script
     const script = document.querySelector('#dollPicContain ~ script');
-    const scriptStart = script.innerText.indexOf('var pic_data');
-    const scriptEnd = script.innerText.indexOf('var homepic');
-
     const skinImages = [];
-    if (scriptStart === -1 || scriptEnd === -1) {
-      // 'No skin image found'
-    } else {
-      const scriptContent = script.innerText.slice(scriptStart, scriptEnd);
-      let fnContent = scriptContent + 'return pic_data;';
-      const picData = new Function(fnContent)();
-      if (picData) {
-        picData.forEach((v) => {
-          skinImages.push({
-            anime: v.anime,
-            line: v.line,
-            name: v.name,
-            pic: v.pic,
-            pic_d: v.pic_d,
-            pic_d_h: v.pic_d_h,
-            pic_h: v.pic_h,
+
+    if (script) {
+      const scriptStart = script.innerText.indexOf('var pic_data');
+      const scriptEnd = script.innerText.indexOf('var homepic');
+
+      if (scriptStart === -1 || scriptEnd === -1) {
+        // 'No skin image found'
+      } else {
+        const scriptContent = script.innerText.slice(scriptStart, scriptEnd);
+        let fnContent = scriptContent + 'return pic_data;';
+        const picData = new Function(fnContent)();
+        if (picData) {
+          picData.forEach((v) => {
+            skinImages.push({
+              anime: v.anime,
+              line: v.line,
+              name: v.name,
+              pic: v.pic,
+              pic_d: v.pic_d,
+              pic_d_h: v.pic_d_h,
+              pic_h: v.pic_h,
+            });
           });
-        });
+        }
       }
     }
 
@@ -157,7 +160,7 @@ const captureSkinList = async (page, url) => {
         index,
         title: v.innerText,
         value: displayValue,
-        images: skinImages,
+        image: skinImages[index] || null,
       };
     });
 
