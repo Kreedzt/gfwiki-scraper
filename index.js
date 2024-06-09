@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { Worker } = require('worker_threads');
-const { captureSkinList, captureTDollList, writeSkinList2File } = require('./utils');
+const { captureSkinList, captureTDollList, writeSkinList2File, mergeSkinData} = require('./utils');
 const { registerTaskExit, registerProcessExit, exitAllTask } = require('./exit');
 
 const threads = os.cpus().length;
@@ -63,10 +63,7 @@ const runCaptureSkinTask = async (dollsData) => {
 
           switch (jsonMsg.type) {
             case 'capture_completed': {
-              allSkinsRecord = {
-                ...allSkinsRecord,
-                ...jsonMsg.data
-              };
+              allSkinsRecord = mergeSkinData(allSkinsRecord, jsonMsg.data);
             }
             case 'capture_error': {
               if (!(jsonMsg.data.id in errorTimesRecord)) {

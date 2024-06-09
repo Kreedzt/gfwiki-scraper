@@ -171,3 +171,22 @@ const captureSkinList = async (page, url) => {
 };
 
 exports.captureSkinList = captureSkinList;
+
+const mergeSkinData = (allSkinData, captureData) => {
+  const id = Object.keys(captureData)[0];
+
+  const newData = {
+    ...allSkinData
+  };
+
+  // 抓取失败时无数据, 返回原有数据
+  if (captureData.length === 0) {
+    return newData;
+  }
+
+  newData[id] = captureData;
+
+  return newData;
+}
+
+exports.mergeSkinData = mergeSkinData;
