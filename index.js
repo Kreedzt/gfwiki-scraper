@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { Worker } = require('worker_threads');
-const { captureSkinList, captureTDollList, writeSkinList2File, mergeSkinData} = require('./utils');
+const { captureTDollList, writeSkinList2File, mergeSkinData} = require('./utils');
 const { registerTaskExit, registerProcessExit, exitAllTask } = require('./exit');
 
 const threads = os.cpus().length;
@@ -15,12 +15,6 @@ const threads = os.cpus().length;
 /**
  * @typedef {Object} TDollSkin
  */
-
-/**
- * 线程状态记录: idle / busy / error
- */
-const threadRecord = {};
-
 
 /**
  * @param dollsData {Array<TDollItem>}

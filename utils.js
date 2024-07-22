@@ -80,7 +80,7 @@ const captureTDollList = async (browser) => {
 
     await page.goto('https://www.gfwiki.org/w/%E6%88%98%E6%9C%AF%E4%BA%BA%E5%BD%A2%E5%9B%BE%E9%89%B4', {
       waitUntil: 'domcontentloaded',
-      timeout: 3000
+      timeout: 30 * 1000
     });
 
     console.log('CaptureTdollList page loaded, start evaluating...');
@@ -119,7 +119,9 @@ exports.captureTDollList = captureTDollList;
  * @param url {String}
  */
 const captureSkinList = async (page, url) => {
-  await page.goto(url);
+  await page.goto(url, {
+    referer: 'https://www.gfwiki.org/w/%E6%88%98%E6%9C%AF%E4%BA%BA%E5%BD%A2%E5%9B%BE%E9%89%B4',
+  });
 
   const skinList = await page.evaluate(() => {
     // Get skin id list
@@ -167,6 +169,8 @@ const captureSkinList = async (page, url) => {
     return dataList;
   });
 
+  console.log('skinList captured:', url, skinList.length, skinList);
+
   return skinList;
 };
 
@@ -184,7 +188,7 @@ const mergeSkinData = (allSkinData, captureData) => {
     return newData;
   }
 
-  newData[id] = captureData;
+  newData[id] = captureData[id];
 
   return newData;
 }
