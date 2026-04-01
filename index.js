@@ -6,7 +6,7 @@ const { Worker } = require('worker_threads');
 const { captureTDollList, writeSkinList2File, mergeSkinData} = require('./utils');
 const { registerTaskExit, registerProcessExit, exitAllTask } = require('./exit');
 
-const threads = os.cpus().length;
+const threads = Math.min(os.cpus().length * 2, 10); // IO密集型任务，提高并行度到CPU核心数的2倍，最多10个线程避免被限流
 
 /**
  * @typedef {{ "url": string, "nameIngame": string, "id": string }} TDollItem
@@ -110,11 +110,9 @@ const runCaptureSkinTask = async (dollsData) => {
       '--no-sandbox',
       '--disable-setuid-sandbox',
       '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--single-process',
-      '--disable-gpu'
+      '--enable-http2', // 启用HTTP/2协议
+      '--disable-http-cache', // 禁用缓存确保获取最新数据
+      '--max-connections-per-host=10' // 增加单域名最大连接数
     ]
   });
 
