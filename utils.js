@@ -142,6 +142,15 @@ const captureSkinList = async (page, url) => {
         const picData = new Function(fnContent)();
         if (picData) {
           picData.forEach((v) => {
+            // Extract skin ID from pic filename
+            let skinId = null;
+            if (v.pic) {
+              const match = v.pic.match(/Pic_[^_]+_(\d+)(?:_HD)?\.(png|jpg)/i);
+              if (match) {
+                skinId = match[1];
+              }
+            }
+            
             skinImages.push({
               anime: v.anime,
               line: v.line,
@@ -150,21 +159,43 @@ const captureSkinList = async (page, url) => {
               pic_d: v.pic_d,
               pic_d_h: v.pic_d_h,
               pic_h: v.pic_h,
+              id: skinId,
             });
           });
         }
       }
     }
 
-    const dataList = elements.map((v, index) => {
-      const displayValue = index === 0 ? '0' : v.value;
-      return {
-        index,
-        title: v.innerText,
-        value: displayValue,
-        image: skinImages[index] || null,
-      };
-    });
+    // Use pic_data as source of truth if it has more entries than select options
+    let dataList = [];
+    if (skinImages.length > elements.length) {
+      // When there are more skins in pic_data than options, create entries from pic_data
+      dataList = skinImages.map((image, index) => {
+        const option = elements[index];
+        // Use image.name as title when available (more accurate than options for extra skins)
+        const title = image.name || (option ? option.innerText : `Skin ${index}`);
+        // Use extracted skin ID as value, fall back to option value or index
+        const displayValue = image.id || (option ? (index === 0 ? '0' : option.value) : String(index));
+        
+        return {
+          index,
+          title,
+          value: displayValue,
+          image,
+        };
+      });
+    } else {
+      // Original behavior when options are sufficient
+      dataList = elements.map((v, index) => {
+        const displayValue = index === 0 ? '0' : v.value;
+        return {
+          index,
+          title: v.innerText,
+          value: displayValue,
+          image: skinImages[index] || null,
+        };
+      });
+    }
 
     return dataList;
   });
