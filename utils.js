@@ -124,6 +124,16 @@ const captureSkinList = async (page, url) => {
   });
 
   const skinList = await page.evaluate(() => {
+    // Extract skin ID from pic filename (self-contained, index-independent)
+    const extractSkinId = (pic, name) => {
+      if (name === '心智升级') return 'mod';
+      if (!pic) return null;
+      if (/Mod(?=[_.])/i.test(pic)) return 'mod';         // Pic_XXXMod.png / Pic_XXXMod_D.png
+      const match = pic.match(/Pic_[^_]+_(\d+)(?:_HD)?\.(png|jpg)/i);
+      if (match) return match[1];
+      return '0';                                          // 默认立绘无编号
+    };
+
     // Get skin id list
     const elements = Array.from(document.querySelectorAll('select.gf-droplist option'));
     // Get skin data script
@@ -142,15 +152,6 @@ const captureSkinList = async (page, url) => {
         const picData = new Function(fnContent)();
         if (picData) {
           picData.forEach((v) => {
-            // Extract skin ID from pic filename
-            let skinId = null;
-            if (v.pic) {
-              const match = v.pic.match(/Pic_[^_]+_(\d+)(?:_HD)?\.(png|jpg)/i);
-              if (match) {
-                skinId = match[1];
-              }
-            }
-            
             skinImages.push({
               anime: v.anime,
               line: v.line,
@@ -159,7 +160,7 @@ const captureSkinList = async (page, url) => {
               pic_d: v.pic_d,
               pic_d_h: v.pic_d_h,
               pic_h: v.pic_h,
-              id: skinId,
+              id: extractSkinId(v.pic, v.name),
             });
           });
         }
@@ -174,9 +175,9 @@ const captureSkinList = async (page, url) => {
         const option = elements[index];
         // Use image.name as title when available (more accurate than options for extra skins)
         const title = image.name || (option ? option.innerText : `Skin ${index}`);
-        // Use extracted skin ID as value, fall back to option value or index
-        const displayValue = image.id || (option ? (index === 0 ? '0' : option.value) : String(index));
-        
+        // Value derives from parsed skin ID; options are unreliable (misaligned indices)
+        const displayValue = image.id != null ? image.id : String(index);
+
         return {
           index,
           title,
@@ -185,14 +186,17 @@ const captureSkinList = async (page, url) => {
         };
       });
     } else {
-      // Original behavior when options are sufficient
+      // Options count is sufficient; still prefer parsed skin ID over option.value
       dataList = elements.map((v, index) => {
-        const displayValue = index === 0 ? '0' : v.value;
+        const image = skinImages[index] || null;
+        const displayValue = image && image.id != null
+          ? image.id
+          : (index === 0 ? '0' : v.value);
         return {
           index,
-          title: v.innerText,
+          title: (image && image.name) || v.innerText,
           value: displayValue,
-          image: skinImages[index] || null,
+          image,
         };
       });
     }
