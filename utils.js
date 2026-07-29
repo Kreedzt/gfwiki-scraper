@@ -124,14 +124,16 @@ const captureSkinList = async (page, url) => {
   });
 
   const skinList = await page.evaluate(() => {
-    // Extract skin ID from pic filename (self-contained, index-independent)
-    const extractSkinId = (pic, name) => {
+    // Extract skin ID from pic filename. idx===0 is always 默认立绘.
+    // Anchor patterns to the filename tail so multi-segment doll names
+    // (e.g. M4_SOPMOD_II) and the "MOD" substring inside them don't false-match.
+    const extractSkinId = (pic, name, idx) => {
+      if (idx === 0) return '0';                                     // 默认立绘恒为首条
       if (name === '心智升级') return 'mod';
       if (!pic) return null;
-      if (/Mod(?=[_.])/i.test(pic)) return 'mod';         // Pic_XXXMod.png / Pic_XXXMod_D.png
-      const match = pic.match(/Pic_[^_]+_(\d+)(?:_HD)?\.(png|jpg)/i);
-      if (match) return match[1];
-      return '0';                                          // 默认立绘无编号
+      if (/Mod(?:_D)?(?:_HD)?\.(?:png|jpg)$/i.test(pic)) return 'mod'; // ..._IIMod_HD.png / ...Mod.png
+      const match = pic.match(/_(\d+)(?:_HD)?\.(?:png|jpg)$/i);        // 末尾皮肤编号
+      return match ? match[1] : null;
     };
 
     // Get skin id list
@@ -151,7 +153,7 @@ const captureSkinList = async (page, url) => {
         let fnContent = scriptContent + 'return pic_data;';
         const picData = new Function(fnContent)();
         if (picData) {
-          picData.forEach((v) => {
+          picData.forEach((v, idx) => {
             skinImages.push({
               anime: v.anime,
               line: v.line,
@@ -160,7 +162,7 @@ const captureSkinList = async (page, url) => {
               pic_d: v.pic_d,
               pic_d_h: v.pic_d_h,
               pic_h: v.pic_h,
-              id: extractSkinId(v.pic, v.name),
+              id: extractSkinId(v.pic, v.name, idx),
             });
           });
         }
